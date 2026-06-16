@@ -15,3 +15,13 @@ This is a personal reference workspace for AI tooling at Starian. It currently c
 These files use CSS custom properties from a host design system — they will look unstyled if opened directly in a browser. Edit the markup and embedded scripts directly; there is no build step.
 
 The embedded Python/bash code snippets are documentation examples, not executable files in this repo.
+
+## GitHub Repository
+
+This project is mirrored at: https://github.com/clara-rodrigues-starian/ai-ops-claude-code
+
+**Sincronização automática:** Após cada alteração de arquivo (Edit ou Write), o hook PostToolUse em `.claude/settings.json` executa `.claude/git-sync.ps1`, que faz commit e push automaticamente para o branch `main`.
+
+- O script só commita se houver mudanças reais (`git status --porcelain`)
+- Mensagem de commit automática: `auto: sync YYYY-MM-DD HH:mm`
+- O token de autenticação está embutido na URL do remote (`.git/config`) — não compartilhe esse arquivo
