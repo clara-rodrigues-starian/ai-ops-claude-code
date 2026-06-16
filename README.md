@@ -1,6 +1,6 @@
-# AI OPS — Claude Code
+# Tetris de teste
 
-Workspace de referência pessoal para ferramentas de IA na Starian.
+Este conteúdo foi gerado como teste de conexão com o github.
 
 ## Conteúdo
 
