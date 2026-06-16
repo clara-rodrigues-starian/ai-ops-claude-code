@@ -8,13 +8,19 @@ This is a personal reference workspace for AI tooling at Starian. It currently c
 
 ## Contents
 
+- `tetris.html` — Fully self-contained Tetris game. No external dependencies, no build step — open directly in any modern browser. All game logic (board, pieces, rotation, scoring, levels, ghost piece) is in a single `<script>` block. Do not add external libraries or split into multiple files; keep it standalone.
+
 - `time_tracking_claude_code_figma_make.html` — A bilingual (Portuguese) reference guide documenting time-tracking methods for Claude Code (CLI) and Figma Make. Intended to be embedded in a web interface that provides CSS variables (`--color-*`, `--border-radius-*`, `--font-mono`) and the Tabler Icons font (`ti ti-*`). Renders correctly only inside that host environment.
+
+- `README.md` — Project overview in Brazilian Portuguese.
 
 ## Working with the HTML files
 
-These files use CSS custom properties from a host design system — they will look unstyled if opened directly in a browser. Edit the markup and embedded scripts directly; there is no build step.
+`tetris.html` is fully standalone and renders correctly when opened directly in a browser.
 
-The embedded Python/bash code snippets are documentation examples, not executable files in this repo.
+`time_tracking_claude_code_figma_make.html` uses CSS custom properties from a host design system — it will look unstyled if opened directly in a browser. Edit the markup and embedded scripts directly; there is no build step.
+
+The embedded Python/bash code snippets in the time-tracking file are documentation examples, not executable files in this repo.
 
 ## GitHub Repository
 
