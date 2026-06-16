@@ -1,0 +1,221 @@
+<h2 class="sr-only">Guia de rastreamento de horas: Claude Code e Figma Make — métodos nativos e complementares com exemplos de código</h2>
+<style>
+.tsec{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:18px 20px;margin-bottom:14px;background:var(--color-background-primary)}
+.mcard{padding:13px 0;border-top:0.5px solid var(--color-border-tertiary)}
+.mcard:first-of-type{border-top:none;padding-top:4px}
+.mlabel{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.mdesc{font-size:12px;color:var(--color-text-secondary);line-height:1.6;margin-bottom:0}
+.cb{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 13px;font-family:var(--font-mono);font-size:11.5px;margin-top:9px;white-space:pre;overflow-x:auto;color:var(--color-text-primary);line-height:1.65}
+.tag{font-size:11px;font-weight:400;padding:2px 7px;border-radius:var(--border-radius-md)}
+.lim{font-size:11.5px;color:var(--color-text-tertiary);margin-top:14px;padding-top:12px;border-top:0.5px solid var(--color-border-tertiary)}
+code{font-family:var(--font-mono);font-size:11px;background:var(--color-background-secondary);padding:1px 5px;border-radius:4px}
+</style>
+
+<div class="tsec">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <div>
+      <span style="font-size:11px;padding:3px 9px;border-radius:var(--border-radius-md);background:#E1F5EE;color:#085041;display:inline-block;margin-bottom:8px"><i class="ti ti-terminal" aria-hidden="true" style="font-size:12px;margin-right:4px"></i>Claude Code — Terminal / CLI</span>
+      <div style="font-size:15px;font-weight:500">Rastreamento de horas no Claude Code</div>
+    </div>
+    <span style="font-size:12px;color:var(--color-text-tertiary)">3 métodos</span>
+  </div>
+
+  <div class="mcard">
+    <div class="mlabel">
+      <span style="width:20px;height:20px;border-radius:50%;background:var(--color-background-success);color:var(--color-text-success);font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</span>
+      Arquivos de sessão JSONL
+      <span class="tag" style="background:var(--color-background-success);color:var(--color-text-success)">nativo</span>
+    </div>
+    <div class="mdesc">Claude Code salva cada sessão como um arquivo <code>.jsonl</code> em <code>~/.claude/projects/</code>. Cada mensagem carrega um campo <code>timestamp</code> — o delta entre o primeiro e o último registro é a duração real da sessão. Explore a estrutura antes de rodar o script.</div>
+    <div class="cb">
+# Passo 1 — explorar a estrutura de sessões
+ls ~/.claude/projects/
+
+# Passo 2 — listar arquivos de sessão por data
+find ~/.claude/projects -name "*.jsonl" | xargs ls -lt | head -10
+
+# Passo 3 — calcular duração da sessão mais recente
+SESS=$(find ~/.claude/projects -name "*.jsonl" -print0 \
+  | xargs -0 ls -t | head -1)
+
+python3 - "$SESS" &lt;&lt;'EOF'
+import sys, json
+from datetime import datetime, timezone
+
+lines = [l for l in open(sys.argv[1]) if l.strip()]
+if len(lines) < 2:
+    print("Sessão muito curta ou arquivo vazio.")
+    sys.exit()
+
+def parse(line):
+    return datetime.fromisoformat(
+        json.loads(line).get("timestamp","").replace("Z","+00:00")
+    )
+
+t0, t1 = parse(lines[0]), parse(lines[-1])
+mins = round((t1 - t0).total_seconds() / 60)
+print(f"Início : {t0.strftime('%Y-%m-%d %H:%M')}")
+print(f"Fim    : {t1.strftime('%Y-%m-%d %H:%M')}")
+print(f"Duração: {mins} min")
+EOF</div>
+  </div>
+
+  <div class="mcard">
+    <div class="mlabel">
+      <span style="width:20px;height:20px;border-radius:50%;background:var(--color-background-warning);color:var(--color-text-warning);font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span>
+      Wrapper de shell com log automático
+      <span class="tag" style="background:var(--color-background-warning);color:var(--color-text-warning)">complementar</span>
+    </div>
+    <div class="mdesc">Substitui o comando <code>claude</code> por uma função que registra início, fim e projeto em um arquivo de log — sem mudar nada no fluxo de uso. Adicione ao <code>~/.zshrc</code> ou <code>~/.bashrc</code> e recarregue o terminal.</div>
+    <div class="cb">
+# Adicionar ao ~/.zshrc ou ~/.bashrc
+claude() {
+  local START_TS=$(date +%s)
+  local START_DT=$(date '+%Y-%m-%d %H:%M')
+  local PROJECT=$(basename "$PWD")
+  command claude "$@"
+  local END_DT=$(date '+%Y-%m-%d %H:%M')
+  local MINS=$(( ($(date +%s) - START_TS) / 60 ))
+  echo "$START_DT → $END_DT | ${MINS}min | $PROJECT" \
+    >> ~/horas-claude-code.log
+  echo "⏱ Sessão encerrada: ${MINS} min registrados."
+}
+
+# Recarregar: source ~/.zshrc
+
+# Ver log acumulado
+cat ~/horas-claude-code.log
+
+# Exemplo de saída:
+# 2025-06-09 14:03 → 15:01 | 58min | prototipo-clf-v3
+# 2025-06-09 16:30 → 17:12 | 42min | prototipo-clf-v3</div>
+  </div>
+
+  <div class="mcard">
+    <div class="mlabel">
+      <span style="width:20px;height:20px;border-radius:50%;background:var(--color-background-success);color:var(--color-text-success);font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</span>
+      Comando <code>/cost</code> — proxy por intensidade
+      <span class="tag" style="background:var(--color-background-success);color:var(--color-text-success)">nativo</span>
+    </div>
+    <div class="mdesc">Durante qualquer sessão ativa, <code>/cost</code> exibe tokens consumidos e custo estimado. Não mede tempo diretamente, mas é útil para comparar a intensidade relativa entre sessões de prototipagem e estimar esforço.</div>
+    <div class="cb">
+# Dentro de uma sessão ativa
+/cost
+
+# Saída típica:
+# Tokens usados — entrada: 18.4k  |  saída: 4.1k
+# Custo estimado da sessão: ~$0.058
+#
+# Dica: anote o custo ao final de cada sessão junto
+# com o tempo manual → cria um calibrador pessoal
+# (ex: "cada $0.01 ≈ 8 min de trabalho no meu fluxo")</div>
+  </div>
+
+  <div class="lim"><i class="ti ti-alert-circle" aria-hidden="true" style="font-size:13px;margin-right:5px"></i>Limitação dos métodos 1 e 2: medem tempo de sessão aberta, não foco ativo. Uma pausa de 20 min sem fechar o terminal ainda aparece como contínua.</div>
+</div>
+
+<div class="tsec">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <div>
+      <span style="font-size:11px;padding:3px 9px;border-radius:var(--border-radius-md);background:#FAECE7;color:#712B13;display:inline-block;margin-bottom:8px"><i class="ti ti-layout" aria-hidden="true" style="font-size:12px;margin-right:4px"></i>Figma Make — Browser / Web</span>
+      <div style="font-size:15px;font-weight:500">Rastreamento de horas no Figma Make</div>
+    </div>
+    <span style="font-size:12px;color:var(--color-text-tertiary)">3 métodos</span>
+  </div>
+
+  <div class="mcard">
+    <div class="mlabel">
+      <span style="width:20px;height:20px;border-radius:50%;background:var(--color-background-success);color:var(--color-text-success);font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</span>
+      Histórico de versões — interface visual
+      <span class="tag" style="background:var(--color-background-success);color:var(--color-text-success)">nativo</span>
+    </div>
+    <div class="mdesc">Cada prompt executado no Figma Make cria uma versão com timestamp. O delta entre versões consecutivas é uma estimativa de quanto tempo você ficou em cada iteração. Acesse sem precisar de token ou script.</div>
+    <div class="cb">
+Caminho: Menu ▸ File ▸ Show version history  (Cmd+Option+S)
+
+Leitura do histórico:
+  13:47  "Prompt: criar tela de boas-vindas"   ← início
+  14:31  "Prompt: ajustar tipografia"           ← Δ 44 min
+  14:58  "Prompt: adicionar animação de entrada"← Δ 27 min
+  15:40  "Prompt: revisão geral do fluxo"       ← Δ 42 min
+                                    Total: ~113 min
+
+Dica: renomeie versões com o contexto do prompt logo
+após executar — facilita imensamente a leitura depois.</div>
+  </div>
+
+  <div class="mcard">
+    <div class="mlabel">
+      <span style="width:20px;height:20px;border-radius:50%;background:var(--color-background-success);color:var(--color-text-success);font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span>
+      Figma REST API — versões programáticas
+      <span class="tag" style="background:var(--color-background-success);color:var(--color-text-success)">nativo</span>
+    </div>
+    <div class="mdesc">A API retorna todas as versões com <code>created_at</code> precisos. Ideal para consolidar dados de múltiplos arquivos em uma planilha de horas ou dashboard de projeto.</div>
+    <div class="cb">
+# Pré-requisitos:
+# TOKEN → figma.com/settings → Account → Personal access tokens
+# FILE_KEY → URL do arquivo: figma.com/file/{FILE_KEY}/...
+
+TOKEN="seu_token_aqui"
+FILE_KEY="seu_file_key_aqui"
+
+curl -s -H "X-Figma-Token: $TOKEN" \
+  "https://api.figma.com/v1/files/$FILE_KEY/versions" \
+  | python3 -c "
+import sys, json
+from datetime import datetime
+
+data = json.load(sys.stdin)
+versions = data.get('versions', [])
+prev = None
+
+for v in reversed(versions):
+    dt_str = v['created_at'][:19].replace('T',' ')
+    dt = datetime.fromisoformat(dt_str)
+    label = v.get('label') or 'iteração'
+    delta = ''
+    if prev:
+        mins = round((dt - prev).total_seconds() / 60)
+        delta = f'  Δ {mins} min'
+    print(f'{dt_str}  {label}{delta}')
+    prev = dt
+"</div>
+  </div>
+
+  <div class="mcard">
+    <div class="mlabel">
+      <span style="width:20px;height:20px;border-radius:50%;background:var(--color-background-warning);color:var(--color-text-warning);font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</span>
+      Extensão de browser — Toggl Track ou Clockify
+      <span class="tag" style="background:var(--color-background-warning);color:var(--color-text-warning)">complementar</span>
+    </div>
+    <div class="mdesc">Único método que mede tempo de foco ativo real — não depende de saves. A extensão detecta a aba <code>figma.com</code> e inicia o timer automaticamente. É o método mais confiável para horas faturáveis.</div>
+    <div class="cb">
+Toggl Track — configuração para Figma Make:
+
+1. Instalar: toggl.com/track/chrome-extension
+2. Abrir extensão → Settings → Autotracker → New rule:
+     URL contains : figma.com
+     Project      : Checklist Fácil
+     Tag          : figma-make, prototipo
+
+3. O timer inicia automaticamente ao abrir qualquer
+   arquivo Figma e pausa ao trocar de aba.
+
+4. Exportar: app.toggl.com/reports
+     Filtrar por tag "figma-make"
+     Exportar CSV → colar na planilha de horas
+
+Alternativa gratuita: Clockify tem a mesma função
+de autotracker por URL (clockify.me/chrome-extension)</div>
+  </div>
+
+  <div class="lim"><i class="ti ti-alert-circle" aria-hidden="true" style="font-size:13px;margin-right:5px"></i>Limitação dos métodos 1 e 2: medem timestamps de saves/prompts, não tempo de tela ativo. Períodos longos entre iterações podem incluir inatividade real. O método 3 é o único que isola o tempo de foco efetivo.</div>
+</div>
+
+<div style="background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+  <div>
+    <div style="font-size:13px;font-weight:500;margin-bottom:3px"><i class="ti ti-star" aria-hidden="true" style="font-size:14px;margin-right:5px;color:var(--color-text-warning)"></i>Combinação recomendada para protótipos navegáveis</div>
+    <div style="font-size:12px;color:var(--color-text-secondary)">Claude Code: wrapper de shell (M2) &nbsp;+&nbsp; Figma Make: Toggl com autotracker (M3) — ambos rodam em paralelo sem interromper o fluxo</div>
+  </div>
+  <button onclick="sendPrompt('Crie um script Python que lê o horas-claude-code.log e os dados da API do Figma e gera um relatório consolidado de horas por dia e por projeto')" style="font-size:12px;white-space:nowrap">Gerar script de consolidação ↗</button>
+</div>
