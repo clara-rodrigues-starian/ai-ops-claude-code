@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cheatsheet — Terminal, Git & NPM</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    padding: 24px;
+    min-height: 100vh;
+  }
+  h1 { font-size: 20px; font-weight: 700; color: #f8fafc; margin-bottom: 20px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab {
+    padding: 7px 16px; border-radius: 20px; border: 1.5px solid #2d3748;
+    background: transparent; color: #94a3b8; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .tab:hover { border-color: #4a5568; color: #cbd5e1; }
+  .tab.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .tab[data-cat="git"].active { background: #f97316; border-color: #f97316; }
+  .tab[data-cat="npm"].active { background: #22c55e; border-color: #22c55e; }
+  .tab[data-cat="terminal"].active { background: #a855f7; border-color: #a855f7; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .group { margin-bottom: 20px; }
+  .group-title {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+    color: #64748b; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #1e2736;
+  }
+  .cmd-row {
+    display: grid; grid-template-columns: minmax(240px, auto) 1fr auto;
+    align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px;
+    transition: background 0.1s; border: 1px solid transparent;
+  }
+  .cmd-row:hover { background: #1a2235; border-color: #2d3748; }
+  .cmd-code {
+    font-family: 'Fira Mono', 'Cascadia Code', monospace; font-size: 12.5px;
+    color: #fbbf24; background: #1e2736; padding: 4px 10px; border-radius: 5px; white-space: nowrap;
+  }
+  .cmd-desc { font-size: 13px; color: #94a3b8; line-height: 1.45; }
+  .badge {
+    display: inline-block; font-size: 10px; font-weight: 600; padding: 1px 6px;
+    border-radius: 10px; margin-left: 6px; vertical-align: middle;
+    background: #1e3a5f; color: #60a5fa;
+  }
+  .copy-btn {
+    background: #1e2736; border: 1px solid #2d3748; color: #64748b; font-size: 11px;
+    padding: 4px 10px; border-radius: 5px; cursor: pointer; white-space: nowrap;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .copy-btn:hover { background: #2d3748; color: #cbd5e1; border-color: #4a5568; }
+  .copy-btn.copied { background: #14532d; color: #4ade80; border-color: #166534; }
+  .search-wrap { margin-bottom: 16px; }
+  input[type="search"] {
+    width: 100%; background: #1a2235; border: 1.5px solid #2d3748; border-radius: 8px;
+    padding: 9px 14px; font-size: 13px; color: #e2e8f0; outline: none;
+    transition: border-color 0.15s; font-family: inherit;
+  }
+  input[type="search"]:focus { border-color: #3b82f6; }
+  input[type="search"]::placeholder { color: #4a5568; }
+  .no-results { color: #4a5568; font-size: 13px; padding: 16px 0; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>📟 Cheatsheet — Terminal, Git & NPM</h1>
+
+<div class="search-wrap">
+  <input type="search" id="search" placeholder="Buscar comando..." oninput="filterAll(this.value)">
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-cat="all" onclick="switchTab('all', this)">Todos</button>
+  <button class="tab" data-cat="git" onclick="switchTab('git', this)">Git</button>
+  <button class="tab" data-cat="npm" onclick="switchTab('npm', this)">NPM</button>
+  <button class="tab" data-cat="terminal" onclick="switchTab('terminal', this)">Terminal</button>
+</div>
+
+<div id="content"></div>
+
+<script>
+const data = {
+  git: [
+    { group: "Navegação e branches", cmds: [
+      { cmd: "git status", desc: "Mostra arquivos modificados, adicionados ou deletados desde o último commit" },
+      { cmd: "git branch", desc: "Lista todas as branches locais e indica em qual você está" },
+      { cmd: "git branch -a", desc: "Lista todas as branches, incluindo as remotas (GitLab)" },
+      { cmd: "git checkout nome-da-branch", desc: "Muda para uma branch existente" },
+      { cmd: "git checkout -b nome-da-branch", desc: "Cria uma nova branch e já muda para ela" },
+      { cmd: "git switch nome-da-branch", desc: "Alternativa moderna ao checkout para trocar de branch", isNew: true },
+      { cmd: "git switch -c nome-da-branch", desc: "Alternativa moderna ao checkout -b — cria e muda para a branch", isNew: true },
+      { cmd: "git branch -d nome-da-branch", desc: "Deleta uma branch local (só se já tiver sido mergeada)", isNew: true },
+      { cmd: "git branch -D nome-da-branch", desc: "Força a deleção de uma branch local mesmo sem merge", isNew: true },
+    ]},
+    { group: "Sincronização com remoto", cmds: [
+      { cmd: "git clone link-repositorio", desc: "Clona o repositório na máquina local" },
+      { cmd: "git pull origin main", desc: "Baixa e aplica as atualizações mais recentes da branch main" },
+      { cmd: "git pull origin nome-da-branch", desc: "Puxa atualizações de uma branch específica", isNew: true },
+      { cmd: "git fetch --all", desc: "Baixa todas as atualizações remotas sem aplicar — útil para ver o que mudou" },
+      { cmd: "git push origin nome-da-branch", desc: "Envia commits locais para a branch remota", isNew: true },
+      { cmd: "git push -u origin nome-da-branch", desc: "Envia a branch e configura o tracking remoto (só na primeira vez)", isNew: true },
+      { cmd: "git remote -v", desc: "Mostra os repositórios remotos configurados (origin, etc.)", isNew: true },
+    ]},
+    { group: "Histórico e comparação", cmds: [
+      { cmd: "git log --oneline", desc: "Histórico de commits resumido (uma linha por commit)" },
+      { cmd: "git log --oneline --graph", desc: "Histórico com visualização gráfica das branches", isNew: true },
+      { cmd: "git diff", desc: "Mostra exatamente o que mudou linha a linha nos arquivos modificados" },
+      { cmd: "git diff nome-da-branch", desc: "Compara a branch atual com outra branch", isNew: true },
+      { cmd: "git show hash-do-commit", desc: "Mostra os detalhes e mudanças de um commit específico", isNew: true },
+      { cmd: "git blame nome-do-arquivo", desc: "Mostra quem alterou cada linha de um arquivo e em qual commit", isNew: true },
+    ]},
+    { group: "Trabalho em andamento", cmds: [
+      { cmd: "git stash", desc: "Guarda temporariamente alterações locais sem commitar — útil para trocar de branch" },
+      { cmd: "git stash pop", desc: "Recupera as alterações guardadas com git stash" },
+      { cmd: "git stash list", desc: "Lista todos os stashes salvos", isNew: true },
+      { cmd: "git stash drop", desc: "Descarta o stash mais recente sem aplicar", isNew: true },
+      { cmd: "git restore nome-do-arquivo", desc: "Descarta as mudanças de um arquivo e volta ao estado do último commit", isNew: true },
+      { cmd: "git restore .", desc: "Descarta todas as mudanças locais não commitadas — cuidado: irreversível", isNew: true },
+    ]},
+    { group: "Commits", cmds: [
+      { cmd: "git add nome-do-arquivo", desc: "Prepara um arquivo específico para o próximo commit", isNew: true },
+      { cmd: "git add .", desc: "Prepara todos os arquivos modificados para o próximo commit", isNew: true },
+      { cmd: 'git commit -m "mensagem"', desc: "Cria um commit com os arquivos preparados", isNew: true },
+      { cmd: "git commit --amend", desc: "Edita o commit mais recente — só use antes de fazer push", isNew: true },
+      { cmd: "git revert hash-do-commit", desc: "Desfaz um commit criando um novo — seguro para branches compartilhadas", isNew: true },
+      { cmd: "git reset --soft HEAD~1", desc: "Desfaz o último commit mas mantém as mudanças em stage", isNew: true },
+    ]},
+    { group: "Merge e rebase", cmds: [
+      { cmd: "git merge nome-da-branch", desc: "Incorpora as mudanças de outra branch na branch atual", isNew: true },
+      { cmd: "git rebase main", desc: "Reaplica os commits da branch atual sobre a main — mantém histórico limpo", isNew: true },
+      { cmd: "git cherry-pick hash-do-commit", desc: "Aplica um commit específico de outra branch na branch atual", isNew: true },
+    ]},
+  ],
+  npm: [
+    { group: "Instalação e dependências", cmds: [
+      { cmd: "npm install", desc: "Instala todas as dependências do projeto listadas no package.json" },
+      { cmd: "npm install nome-pacote", desc: "Instala um pacote e adiciona às dependências", isNew: true },
+      { cmd: "npm install -D nome-pacote", desc: "Instala um pacote como devDependency (só usado em desenvolvimento)", isNew: true },
+      { cmd: "npm uninstall nome-pacote", desc: "Remove um pacote do projeto e do package.json", isNew: true },
+      { cmd: "npm update", desc: "Atualiza todos os pacotes instalados para versões compatíveis", isNew: true },
+      { cmd: "npm ci", desc: "Instalação limpa baseada no package-lock.json — mais previsível, ideal para CI/CD", isNew: true },
+    ]},
+    { group: "Scripts e execução", cmds: [
+      { cmd: "npm run dev", desc: "Inicia o servidor de desenvolvimento local" },
+      { cmd: "npm run build", desc: "Gera o build de produção do projeto" },
+      { cmd: "npm run test", desc: "Executa os testes automatizados do projeto", isNew: true },
+      { cmd: "npm run lint", desc: "Roda o linter para verificar erros de código e estilo", isNew: true },
+      { cmd: "npm run", desc: "Lista todos os scripts disponíveis no package.json", isNew: true },
+      { cmd: "npx nome-pacote", desc: "Executa um pacote npm sem precisar instalar globalmente", isNew: true },
+    ]},
+    { group: "Informações e diagnóstico", cmds: [
+      { cmd: "node -v", desc: "Verifica a versão do Node.js instalada" },
+      { cmd: "npm -v", desc: "Verifica a versão do NPM instalada", isNew: true },
+      { cmd: "npm list --depth=0", desc: "Lista os pacotes instalados no projeto (sem sub-dependências)", isNew: true },
+      { cmd: "npm outdated", desc: "Mostra quais pacotes têm versões mais novas disponíveis", isNew: true },
+      { cmd: "npm audit", desc: "Verifica vulnerabilidades de segurança nos pacotes instalados", isNew: true },
+      { cmd: "npm cache clean --force", desc: "Limpa o cache do NPM — útil quando há erros estranhos na instalação", isNew: true },
+    ]},
+  ],
+  terminal: [
+    { group: "Navegação e arquivos", cmds: [
+      { cmd: "pwd", desc: "Mostra o caminho completo do diretório em que você está" },
+      { cmd: "ls", desc: "Lista os arquivos e pastas do diretório atual" },
+      { cmd: "ls -la", desc: "Lista arquivos com detalhes, incluindo ocultos (que começam com ponto)", isNew: true },
+      { cmd: "cd nome-da-pasta", desc: "Entra em uma pasta", isNew: true },
+      { cmd: "cd ..", desc: "Volta um nível na hierarquia de pastas", isNew: true },
+      { cmd: "cd ~", desc: "Vai direto para a pasta home do usuário", isNew: true },
+      { cmd: "clear", desc: "Limpa o terminal" },
+    ]},
+    { group: "Manipulação de arquivos", cmds: [
+      { cmd: "cat nome-do-arquivo", desc: "Exibe o conteúdo de um arquivo no terminal" },
+      { cmd: "cat .env.example", desc: "Exibe o conteúdo do arquivo de variáveis de ambiente de exemplo" },
+      { cmd: "cp origem destino", desc: "Copia um arquivo" },
+      { cmd: "cp .env.example .env", desc: "Cria o arquivo .env a partir do exemplo — necessário na primeira vez que clona o projeto" },
+      { cmd: "mv origem destino", desc: "Move ou renomeia um arquivo", isNew: true },
+      { cmd: "rm nome-do-arquivo", desc: "Remove um arquivo — cuidado: não vai para a lixeira", isNew: true },
+      { cmd: "mkdir nome-da-pasta", desc: "Cria uma nova pasta", isNew: true },
+      { cmd: "touch nome-do-arquivo", desc: "Cria um arquivo vazio", isNew: true },
+    ]},
+    { group: "Busca e utilitários", cmds: [
+      { cmd: 'grep "texto" nome-do-arquivo', desc: "Busca um texto dentro de um arquivo", isNew: true },
+      { cmd: 'grep -r "texto" .', desc: "Busca um texto em todos os arquivos da pasta atual (recursivo)", isNew: true },
+      { cmd: 'find . -name "*.ts"', desc: "Busca arquivos pelo nome ou extensão dentro da pasta atual", isNew: true },
+      { cmd: "code .", desc: "Abre a pasta atual no VS Code", isNew: true },
+      { cmd: "which nome-do-comando", desc: "Mostra onde está instalado um comando (ex: which node)", isNew: true },
+    ]},
+    { group: "Atalhos do teclado", cmds: [
+      { cmd: "Ctrl + C", desc: "Interrompe o processo em execução — ex: encerra o servidor dev", isNew: true },
+      { cmd: "Ctrl + L", desc: "Limpa o terminal (equivalente ao clear)", isNew: true },
+      { cmd: "↑ / ↓", desc: "Navega pelo histórico de comandos digitados", isNew: true },
+      { cmd: "Tab", desc: "Autocompleta nomes de arquivos e pastas — use sempre para evitar erros de digitação", isNew: true },
+    ]},
+  ]
+};
+
+let activeTab = 'all';
+let searchQuery = '';
+
+function switchTab(cat, el) {
+  activeTab = cat;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function filterAll(q) {
+  searchQuery = q.toLowerCase();
+  render();
+}
+
+function render() {
+  const container = document.getElementById('content');
+  container.innerHTML = '';
+  const catColors = { git: '#f97316', npm: '#22c55e', terminal: '#a855f7' };
+  const catLabels = { git: 'Git', npm: 'NPM', terminal: 'Terminal' };
+  const categories = activeTab === 'all' ? ['git', 'npm', 'terminal'] : [activeTab];
+  let hasAny = false;
+
+  categories.forEach(cat => {
+    data[cat].forEach(group => {
+      const filtered = group.cmds.filter(c =>
+        !searchQuery || c.cmd.toLowerCase().includes(searchQuery) || c.desc.toLowerCase().includes(searchQuery)
+      );
+      if (!filtered.length) return;
+      hasAny = true;
+
+      const groupEl = document.createElement('div');
+      groupEl.className = 'group';
+
+      const titleEl = document.createElement('div');
+      titleEl.className = 'group-title';
+      titleEl.innerHTML = `<span style="color:${catColors[cat]}">${catLabels[cat]}</span> &nbsp;${group.group}`;
+      groupEl.appendChild(titleEl);
+
+      filtered.forEach(c => {
+        const row = document.createElement('div');
+        row.className = 'cmd-row';
+
+        const codeEl = document.createElement('span');
+        codeEl.className = 'cmd-code';
+        codeEl.textContent = c.cmd;
+
+        const descEl = document.createElement('span');
+        descEl.className = 'cmd-desc';
+        descEl.textContent = c.desc;
+        if (c.isNew) {
+          const badge = document.createElement('span');
+          badge.className = 'badge';
+          badge.textContent = 'novo';
+          descEl.appendChild(badge);
+        }
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.textContent = 'Copiar';
+        copyBtn.onclick = () => {
+          navigator.clipboard.writeText(c.cmd).then(() => {
+            copyBtn.textContent = 'Copiado!';
+            copyBtn.classList.add('copied');
+            setTimeout(() => { copyBtn.textContent = 'Copiar'; copyBtn.classList.remove('copied'); }, 1500);
+          });
+        };
+
+        row.appendChild(codeEl);
+        row.appendChild(descEl);
+        row.appendChild(copyBtn);
+        groupEl.appendChild(row);
+      });
+
+      container.appendChild(groupEl);
+    });
+  });
+
+  if (!hasAny) container.innerHTML = '<div class="no-results">Nenhum comando encontrado para essa busca.</div>';
+}
+
+render();
+</script>
+</body>
+</html>
