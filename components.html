@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventário de Componentes — checklistfacil-web</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222636;
+    --border: #2e3348;
+    --accent: #6c63ff;
+    --accent2: #4ecdc4;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --blue: #3b82f6;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --sidebar-w: 240px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; display: flex; min-height: 100vh; }
+
+  /* SIDEBAR */
+  #sidebar {
+    width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--surface);
+    border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; height: 100vh;
+    overflow-y: auto; z-index: 100; display: flex; flex-direction: column;
+  }
+  .sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid var(--border); }
+  .sidebar-header h1 { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: 0.5px; text-transform: uppercase; }
+  .sidebar-header p { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .sidebar-nav { padding: 8px 0; flex: 1; }
+  .nav-section { padding: 12px 16px 4px; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 16px; cursor: pointer; color: var(--muted); font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; text-decoration: none; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(108,99,255,0.1); color: var(--accent); border-left-color: var(--accent); }
+  .nav-item .icon { font-size: 16px; min-width: 20px; text-align: center; }
+  .nav-badge { margin-left: auto; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; }
+  .nav-badge.green { background: var(--green); }
+  .nav-badge.red { background: var(--red); }
+  .nav-badge.yellow { background: var(--yellow); color: #000; }
+
+  /* MAIN */
+  #main { margin-left: var(--sidebar-w); flex: 1; padding: 0; }
+  .section { display: none; padding: 32px; animation: fadeIn 0.2s ease; }
+  .section.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* TOPBAR */
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+  .topbar h2 { font-size: 22px; font-weight: 700; }
+  .topbar-meta { font-size: 12px; color: var(--muted); }
+
+  /* METRIC CARDS */
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .metric-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .metric-card .value { font-size: 28px; font-weight: 800; }
+  .metric-card .value.accent { color: var(--accent); }
+  .metric-card .value.green { color: var(--green); }
+  .metric-card .value.yellow { color: var(--yellow); }
+  .metric-card .value.red { color: var(--red); }
+  .metric-card .value.blue { color: var(--blue); }
+
+  /* SEARCH & FILTER BAR */
+  .filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; }
+  .search-wrap input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px 8px 36px; color: var(--text); font-size: 13px; outline: none; transition: border 0.15s; }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-wrap::before { content: '🔍'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 14px; pointer-events: none; }
+  .filter-select { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 28px 8px 12px; color: var(--text); font-size: 13px; outline: none; cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238892a4' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+  .filter-select:focus { border-color: var(--accent); }
+  .filter-reset { background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: var(--muted); font-size: 12px; cursor: pointer; transition: all 0.15s; }
+  .filter-reset:hover { border-color: var(--red); color: var(--red); }
+  .results-count { font-size: 12px; color: var(--muted); }
+
+  /* TABLES */
+  .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: var(--surface); padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }
+  thead th:hover { color: var(--text); }
+  thead th .sort-icon { margin-left: 4px; opacity: 0.4; }
+  thead th.sorted .sort-icon { opacity: 1; color: var(--accent); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.03); }
+  tbody td { padding: 9px 14px; font-size: 13px; vertical-align: middle; }
+  .empty-state { text-align: center; padding: 48px 16px; color: var(--muted); font-size: 14px; }
+
+  /* TAGS */
+  .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .tag-green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .tag-red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .tag-blue { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .tag-yellow { background: rgba(245,158,11,0.15); color: var(--yellow); }
+  .tag-purple { background: rgba(108,99,255,0.15); color: var(--accent); }
+  .tag-teal { background: rgba(78,205,196,0.15); color: var(--accent2); }
+  .tag-gray { background: rgba(136,146,164,0.15); color: var(--muted); }
+
+  /* COMPLEXITY BAR */
+  .complexity-bar { display: flex; align-items: center; gap: 8px; }
+  .bar { height: 6px; border-radius: 3px; background: var(--border); flex: 1; max-width: 80px; }
+  .bar-fill { height: 100%; border-radius: 3px; }
+  .bar-trivial { background: var(--green); }
+  .bar-simple { background: var(--blue); }
+  .bar-moderate { background: var(--yellow); }
+  .bar-complex { background: #f97316; }
+  .bar-very-complex { background: var(--red); }
+
+  /* CARDS */
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .card h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .card .sub { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+  .card ul { list-style: none; }
+  .card ul li { padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+  .card ul li:last-child { border-bottom: none; }
+  .card ul li strong { color: var(--text); }
+  .sim-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: rgba(108,99,255,0.15); color: var(--accent); float: right; }
+
+  /* DISTRIBUTION BARS */
+  .dist-item { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .dist-label { width: 120px; font-size: 13px; color: var(--muted); }
+  .dist-bar-wrap { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .dist-bar { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+  .dist-value { width: 60px; text-align: right; font-size: 12px; color: var(--text); font-weight: 600; }
+
+  /* TOP LIST */
+  .rank-list { list-style: none; }
+  .rank-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .rank-item:last-child { border-bottom: none; }
+  .rank-num { width: 28px; height: 28px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+  .rank-num.top3 { background: rgba(108,99,255,0.2); color: var(--accent); }
+  .rank-info { flex: 1; }
+  .rank-name { font-weight: 600; font-size: 13px; }
+  .rank-path { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .rank-score { font-size: 20px; font-weight: 800; color: var(--accent); }
+
+  /* CHANGES */
+  .changes-new { background: rgba(34,197,94,0.05); border: 1px solid rgba(34,197,94,0.2); border-radius: 10px; padding: 16px; margin-bottom: 20px; }
+  .changes-modified { background: rgba(245,158,11,0.05); border: 1px solid rgba(245,158,11,0.2); border-radius: 10px; padding: 16px; }
+  .changes-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* PAGINATION */
+  .pagination { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  .page-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; color: var(--muted); cursor: pointer; font-size: 12px; transition: all 0.15s; }
+  .page-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .page-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .per-page-wrap { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+
+  code { background: var(--surface2); padding: 1px 6px; border-radius: 4px; font-size: 11px; color: var(--accent2); font-family: monospace; }
+
+  @media (max-width: 768px) {
+    #sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+    #sidebar.open { transform: translateX(0); }
+    #main { margin-left: 0; }
+    .section { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<nav id="sidebar">
+  <div class="sidebar-header">
+    <h1>Component Audit</h1>
+    <p>checklistfacil-web · Angular 19.2.9</p>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Visão Geral</div>
+    <a class="nav-item active" onclick="showSection('summary')">
+      <span class="icon">📊</span> Sumário Executivo <span class="nav-badge">1050</span>
+    </a>
+    <a class="nav-item" onclick="showSection('changes')">
+      <span class="icon">🔄</span> Mudanças <span class="nav-badge green">+20</span>
+    </a>
+    <div class="nav-section">Análise</div>
+    <a class="nav-item" onclick="showSection('complexity')">
+      <span class="icon">📈</span> Complexidade
+    </a>
+    <a class="nav-item" onclick="showSection('duplicates')">
+      <span class="icon">🔴</span> Duplicados <span class="nav-badge yellow">40</span>
+    </a>
+    <a class="nav-item" onclick="showSection('orphans')">
+      <span class="icon">👻</span> Órfãos <span class="nav-badge red">330</span>
+    </a>
+    <div class="nav-section">Inventário</div>
+    <a class="nav-item" onclick="showSection('inventory')">
+      <span class="icon">📋</span> Todos os Componentes
+    </a>
+  </div>
+</nav>
+
+<main id="main">
+
+<!-- ═══════════════════════════ SUMÁRIO ═══════════════════════════ -->
+<section id="summary" class="section active">
+  <div class="topbar">
+    <div>
+      <h2>📊 Sumário Executivo</h2>
+      <p class="topbar-meta">Extraído em 2026-06-22 · Angular 19.2.9</p>
+    </div>
+  </div>
+
+  <div class="metrics-grid">
+    <div class="metric-card"><div class="label">Total de Componentes</div><div class="value accent">1050</div></div>
+    <div class="metric-card"><div class="label">Total @Inputs</div><div class="value blue">946</div></div>
+    <div class="metric-card"><div class="label">Total @Outputs</div><div class="value blue">810</div></div>
+    <div class="metric-card"><div class="label">Ativos</div><div class="value green">1048</div></div>
+    <div class="metric-card"><div class="label">Deprecated</div><div class="value red">2</div></div>
+    <div class="metric-card"><div class="label">Órfãos</div><div class="value yellow">330</div></div>
+    <div class="metric-card"><div class="label">Grupos Duplicados</div><div class="value yellow">40</div></div>
+    <div class="metric-card"><div class="label">Novos (pós-pull)</div><div class="value green">20</div></div>
+    <div class="metric-card"><div class="label">Removidos (pós-pull)</div><div class="value">0</div></div>
+    <div class="metric-card"><div class="label">Modificados (pós-pull)</div><div class="value yellow">2</div></div>
+  </div>
+
+  <h3 style="margin-bottom:16px;font-size:16px;">Distribuição de Complexidade</h3>
+  <div style="max-width:600px;">
+    <div class="dist-item">
+      <div class="dist-label">Trivial</div>
+      <div class="dist-bar-wrap"><div class="dist-bar bar-trivial" style="width:87%"></div></div>
+      <div class="dist-value">917 · 87%</div>
+    </div>
+    <div class="dist-item">
+      <div class="dist-label">Simples</div>
+      <div class="dist-bar-wrap"><div class="dist-bar bar-simple" style="width:10%"></div></div>
+      <div class="dist-value">113 · 10%</div>
+    </div>
+    <div class="dist-item">
+      <div class="dist-label">Moderado</div>
+      <div class="dist-bar-wrap"><div class="dist-bar bar-moderate" style="width:1%"></div></div>
+      <div class="dist-value">11 · 1%</div>
+    </div>
+    <div class="dist-item">
+      <div class="dist-label">Complexo</div>
+      <div class="dist-bar-wrap"><div class="dist-bar bar-complex" style="width:0.5%"></div></div>
+      <div class="dist-value">5 · 0%</div>
+    </div>
+    <div class="dist-item">
+      <div class="dist-label">Muito Complexo</div>
+      <div class="dist-bar-wrap"><div class="dist-bar bar-very-complex" style="width:0.4%"></div></div>
+      <div class="dist-value">4 · 0%</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ MUDANÇAS ═══════════════════════════ -->
+<section id="changes" class="section">
+  <div class="topbar">
+    <div><h2>🔄 Mudanças Pós-Pull</h2><p class="topbar-meta">20 novos · 0 removidos · 2 modificados</p></div>
+  </div>
+
+  <div class="changes-new">
+    <div class="changes-title"><span>✅</span> Novos Componentes (20)</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Componente</th><th>Domínio</th><th>Categoria</th></tr></thead>
+        <tbody id="changes-new-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="changes-modified">
+    <div class="changes-title"><span>✏️</span> Componentes Modificados (2)</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Componente</th><th>Alteração</th></tr></thead>
+        <tbody>
+          <tr><td><strong>CategoryHeaderComponent</strong></td><td>@Outputs adicionados: <code>aiAgentClick</code></td></tr>
+          <tr><td><strong>ToolCardComponent</strong></td><td>@Inputs adicionados: <code>productName</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ COMPLEXIDADE ═══════════════════════════ -->
+<section id="complexity" class="section">
+  <div class="topbar"><div><h2>📈 Ranking de Complexidade</h2></div></div>
+
+  <h3 style="margin-bottom:14px;font-size:15px;color:var(--muted);">🏆 Top 10 Mais Complexos</h3>
+  <div class="table-wrap" style="margin-bottom:28px;">
+    <ol class="rank-list">
+      <li class="rank-item"><div class="rank-num top3">1</div><div class="rank-info"><div class="rank-name">ItemComponent</div><div class="rank-path">libs/apply-checklist/feature/categories/src/lib/item/item.co…</div></div><div><span class="tag tag-red">Muito Complexo</span></div><div class="rank-score">10</div></li>
+      <li class="rank-item"><div class="rank-num top3">2</div><div class="rank-info"><div class="rank-name">ChecklistItemComponent</div><div class="rank-path">libs/checklist/config/structure/item/feature-shell/src/lib/c…</div></div><div><span class="tag tag-red">Muito Complexo</span></div><div class="rank-score">10</div></li>
+      <li class="rank-item"><div class="rank-num top3">3</div><div class="rank-info"><div class="rank-name">ChecklistAreaItemComponent</div><div class="rank-path">libs/checklist/categories/feature-shell/src/lib/checklist-ar…</div></div><div><span class="tag tag-red">Muito Complexo</span></div><div class="rank-score">9.3</div></li>
+      <li class="rank-item"><div class="rank-num">4</div><div class="rank-info"><div class="rank-name">ChecklistAreaWrapperComponent</div><div class="rank-path">libs/checklist/categories/feature-shell/src/lib/checklist-ar…</div></div><div><span class="tag tag-red">Muito Complexo</span></div><div class="rank-score">8.2</div></li>
+      <li class="rank-item"><div class="rank-num">5</div><div class="rank-info"><div class="rank-name">CategoriesComponent</div><div class="rank-path">libs/apply-checklist/feature/categories/src/lib/categories/c…</div></div><div><span class="tag tag-yellow">Complexo</span></div><div class="rank-score">6.8</div></li>
+      <li class="rank-item"><div class="rank-num">6</div><div class="rank-info"><div class="rank-name">WorkflowCreateComponent</div><div class="rank-path">libs/workflow/entity/create/src/lib/workflow-create/workflow…</div></div><div><span class="tag tag-yellow">Complexo</span></div><div class="rank-score">6.8</div></li>
+      <li class="rank-item"><div class="rank-num">7</div><div class="rank-info"><div class="rank-name">ConfigAnswerWithAiComponent</div><div class="rank-path">libs/checklist/config/structure/item/answer-with-ai/feature/…</div></div><div><span class="tag tag-yellow">Complexo</span></div><div class="rank-score">6.6</div></li>
+      <li class="rank-item"><div class="rank-num">8</div><div class="rank-info"><div class="rank-name">GeneralStepComponent</div><div class="rank-path">libs/workflow/entity/create/src/lib/steps/general-step/gener…</div></div><div><span class="tag tag-yellow">Complexo</span></div><div class="rank-score">6.6</div></li>
+      <li class="rank-item"><div class="rank-num">9</div><div class="rank-info"><div class="rank-name">ModuleDetailComponent</div><div class="rank-path">libs/marketplace/feature/detail/src/lib/module-detail/module…</div></div><div><span class="tag tag-yellow">Complexo</span></div><div class="rank-score">6.3</div></li>
+      <li class="rank-item"><div class="rank-num">10</div><div class="rank-info"><div class="rank-name">ChecklistFormComponent</div><div class="rank-path">libs/checklist/config/settings/form/feature/src/lib/checklis…</div></div><div><span class="tag tag-blue">Moderado</span></div><div class="rank-score">5.8</div></li>
+    </ol>
+  </div>
+
+  <h3 style="margin-bottom:14px;font-size:15px;color:var(--muted);">🌱 Top 10 Mais Simples</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Componente</th><th>Domínio</th></tr></thead>
+      <tbody>
+        <tr><td>AppComponent</td><td><code>apps/scopes/contestacao</code></td></tr>
+        <tr><td>AppComponent</td><td><code>apps/scopes/marketplace</code></td></tr>
+        <tr><td>AppComponent</td><td><code>apps/scopes/visualizar-checklist</code></td></tr>
+        <tr><td>AppComponent</td><td><code>apps/scopes/workflow</code></td></tr>
+        <tr><td>DetailsDialogComponent</td><td><code>action-kanban</code></td></tr>
+        <tr><td>EvaluationInfosDialogComponent</td><td><code>action-kanban</code></td></tr>
+        <tr><td>OptionDeleteComponent</td><td><code>action-kanban</code></td></tr>
+        <tr><td>ActionFilterComponent</td><td><code>action-kanban</code></td></tr>
+        <tr><td>MobileActionDetailsComponent</td><td><code>action-kanban</code></td></tr>
+        <tr><td>MobileActionFilterComponent</td><td><code>action-kanban</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ DUPLICADOS ═══════════════════════════ -->
+<section id="duplicates" class="section">
+  <div class="topbar">
+    <div><h2>🔴 Componentes Duplicados</h2><p class="topbar-meta">40 grupos · similaridade ≥ 75%</p></div>
+  </div>
+  <div class="filter-bar">
+    <div class="search-wrap" style="max-width:300px;">
+      <input type="text" id="dup-search" placeholder="Filtrar grupos..." oninput="filterDuplicates()">
+    </div>
+    <select class="filter-select" id="dup-sim" onchange="filterDuplicates()">
+      <option value="">Todas similaridades</option>
+      <option value="90">≥ 90%</option>
+      <option value="80">≥ 80%</option>
+      <option value="70">≥ 70%</option>
+    </select>
+    <span class="results-count" id="dup-count"></span>
+  </div>
+  <div class="cards-grid" id="dup-cards"></div>
+  <div id="dup-empty" class="empty-state" style="display:none">Nenhum grupo encontrado.</div>
+</section>
+
+<!-- ═══════════════════════════ ÓRFÃOS ═══════════════════════════ -->
+<section id="orphans" class="section">
+  <div class="topbar">
+    <div><h2>👻 Componentes Órfãos</h2><p class="topbar-meta">330 candidatos · seletor não encontrado em templates HTML</p></div>
+  </div>
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <input type="text" id="orp-search" placeholder="Buscar componente..." oninput="filterOrphans()">
+    </div>
+    <select class="filter-select" id="orp-domain" onchange="filterOrphans()">
+      <option value="">Todos domínios</option>
+    </select>
+    <select class="filter-select" id="orp-complexity" onchange="filterOrphans()">
+      <option value="">Todas complexidades</option>
+      <option value="Trivial">Trivial (≤2)</option>
+      <option value="Simples">Simples</option>
+      <option value="Moderado">Moderado</option>
+      <option value="Complexo">Complexo</option>
+    </select>
+    <button class="filter-reset" onclick="resetOrphans()">↺ Limpar</button>
+    <span class="results-count" id="orp-count"></span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortOrphans('name')">Componente <span class="sort-icon">↕</span></th>
+          <th onclick="sortOrphans('selector')">Seletor <span class="sort-icon">↕</span></th>
+          <th onclick="sortOrphans('domain')">Domínio <span class="sort-icon">↕</span></th>
+          <th onclick="sortOrphans('score')">Score <span class="sort-icon">↕</span></th>
+          <th onclick="sortOrphans('complexity')">Complexidade <span class="sort-icon">↕</span></th>
+        </tr>
+      </thead>
+      <tbody id="orp-tbody"></tbody>
+    </table>
+  </div>
+  <div class="pagination" id="orp-pagination"></div>
+</section>
+
+<!-- ═══════════════════════════ INVENTÁRIO ═══════════════════════════ -->
+<section id="inventory" class="section">
+  <div class="topbar">
+    <div><h2>📋 Inventário Completo</h2><p class="topbar-meta">1050 componentes</p></div>
+  </div>
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <input type="text" id="inv-search" placeholder="Buscar componente ou domínio..." oninput="filterInventory()">
+    </div>
+    <select class="filter-select" id="inv-category" onchange="filterInventory()">
+      <option value="">Todas categorias</option>
+    </select>
+    <select class="filter-select" id="inv-domain" onchange="filterInventory()">
+      <option value="">Todos domínios</option>
+    </select>
+    <select class="filter-select" id="inv-status" onchange="filterInventory()">
+      <option value="">Todos status</option>
+      <option value="Ativo">🟢 Ativo</option>
+      <option value="Deprecated">🔴 Deprecated</option>
+    </select>
+    <select class="filter-select" id="inv-complexity" onchange="filterInventory()">
+      <option value="">Todas complexidades</option>
+      <option value="trivial">Trivial (≤2)</option>
+      <option value="simple">Simples (2–4)</option>
+      <option value="moderate">Moderado (4–6)</option>
+      <option value="complex">Complexo (6–8)</option>
+      <option value="very">Muito Complexo (8+)</option>
+    </select>
+    <button class="filter-reset" onclick="resetInventory()">↺ Limpar</button>
+    <span class="results-count" id="inv-count"></span>
+  </div>
+  <div class="per-page-wrap" style="margin-bottom:8px;">
+    Por página:
+    <select class="filter-select" id="inv-per-page" onchange="invPerPageChange()" style="padding:4px 28px 4px 8px;">
+      <option value="25">25</option>
+      <option value="50" selected>50</option>
+      <option value="100">100</option>
+      <option value="250">250</option>
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortInventory('name')">Componente <span class="sort-icon">↕</span></th>
+          <th onclick="sortInventory('category')">Categoria <span class="sort-icon">↕</span></th>
+          <th onclick="sortInventory('domain')">Domínio <span class="sort-icon">↕</span></th>
+          <th onclick="sortInventory('inputs')">In <span class="sort-icon">↕</span></th>
+          <th onclick="sortInventory('outputs')">Out <span class="sort-icon">↕</span></th>
+          <th onclick="sortInventory('score')">Score <span class="sort-icon">↕</span></th>
+          <th onclick="sortInventory('status')">Status <span class="sort-icon">↕</span></th>
+        </tr>
+      </thead>
+      <tbody id="inv-tbody"></tbody>
+    </table>
+  </div>
+  <div class="empty-state" id="inv-empty" style="display:none;">Nenhum componente encontrado.</div>
+  <div class="pagination" id="inv-pagination"></div>
+</section>
+
+</main>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+
+const CHANGES_NEW = [
+  ["AiAgentBackendErrorDialogComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentButtonComponent","apply-checklist","📊 data-display"],
+  ["AiAgentCategoryCardComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentConnectionErrorDialogComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentDialogComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentErrorStepComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentIntroStepComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentLowQualityImageDialogComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentProcessingStepComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentRestartConfirmDialogComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentResultsStepComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentSummaryStepComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentUploadStepComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentVoicePermissionErrorDialogComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentVoiceProcessingStepComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentVoiceRecordingStepComponent","apply-checklist","🪟 overlay"],
+  ["AiAgentVoiceReviewStepComponent","apply-checklist","🪟 overlay"],
+  ["AiEvidenceUploadDialogComponent","apply-checklist","🪟 overlay"],
+  ["ItemActionPlanEntryComponent","visualizar-checklist","📊 data-display"],
+  ["ItemCommentEntryComponent","visualizar-checklist","📊 data-display"],
+];
+
+const DUPLICATES = [
+  {group:"ItemActionEntry",sim:92,members:["ItemActionEntryComponent","ItemActionPlanEntryComponent"]},
+  {group:"PersonalizarCabecalhoPagina",sim:90,members:["PersonalizarCabecalhoPaginaComponent","PersonalizarCabecalhoPdfComponent"]},
+  {group:"MultiselectOptionValueWithIcon",sim:89,members:["MultiselectOptionValueWithIconComponent","MultiselectOptionValueComponent"]},
+  {group:"EvaluationInfosContent",sim:87,members:["EvaluationInfosContentComponent","EvaluationInfosComponent"]},
+  {group:"ItemMoveValueDifference",sim:87,members:["ItemMoveValueDifferenceComponent","TextValueDifferenceComponent"]},
+  {group:"ImportedFromChecklistContent",sim:86,members:["ImportedFromChecklistContentComponent","ItemFromChecklistModelContentComponent"]},
+  {group:"CercaDigitalBloquearConclusao",sim:86,members:["CercaDigitalBloquearConclusaoComponent","CercaDigitalBloquearInicioComponent"]},
+  {group:"CopyItemAnswerListByCategory",sim:85,members:["CopyItemAnswerListByCategoryComponent","CopyItemAnswerListComponent"]},
+  {group:"Editor",sim:82,members:["EditorComponent","RichEditorComponent"]},
+  {group:"EscalaPlaca",sim:82,members:["EscalaPlacaComponent","EscalaSelecaoComponent"]},
+  {group:"ExibirAcaoPdf",sim:77,members:["ExibirAcaoPdfComponent","ExibirCapaComponent","ExibirPlanoAcaoPdfComponent"]},
+  {group:"DialogConfirmAnalysis",sim:69,members:["DialogConfirmAnalysisComponent","DialogConfirmConclusionComponent"]},
+  {group:"CustomField",sim:67,members:["CustomFieldComponent","CustomFieldsComponent"]},
+  {group:"AnswerField",sim:67,members:["AnswerFieldComponent","AnswersFieldsComponent"]},
+  {group:"BorderlessTextarea",sim:67,members:["BorderlessTextareaComponent","BorderlessTextfieldComponent"]},
+  {group:"WorkflowListTable",sim:67,members:["WorkflowListTableComponent","WorkflowListComponent","WorkflowReportsTableComponent","WorkflowListComponent"]},
+  {group:"RunrunTaskDialog",sim:66,members:["RunrunTaskDialogComponent","RunrunitTaskDialogComponent"]},
+  {group:"AdvancedSettings",sim:66,members:["AdvancedSettingsComponent","AdvancedSettingsSurveyComponent"]},
+  {group:"NotificacaoWhatsappGroups",sim:66,members:["NotificacaoWhatsappGroupsComponent","NotificacaoWhatsappComponent"]},
+  {group:"ItemAttachmentEntry",sim:66,members:["ItemAttachmentEntryComponent","ItemCommentEntryComponent"]},
+];
+
+const ORPHANS = [
+  {name:"CategoriesComponent",selector:"cl-categories",domain:"apply-checklist",score:6.8,complexity:"Complexo"},
+  {name:"WorkflowCreateComponent",selector:"cl-workflow-create",domain:"workflow",score:6.8,complexity:"Complexo"},
+  {name:"ModuleDetailComponent",selector:"cl-module-detail",domain:"marketplace",score:6.3,complexity:"Complexo"},
+  {name:"ChecklistFormComponent",selector:"cl-checklist-form",domain:"checklist",score:5.8,complexity:"Moderado"},
+  {name:"VisualizarChecklistComponent",selector:"cl-visualizar-checklist",domain:"visualizar-checklist",score:5.3,complexity:"Moderado"},
+  {name:"WorkflowReportsComponent",selector:"cl-workflow-reports",domain:"workflow",score:4.3,complexity:"Moderado"},
+  {name:"ChecklistAreasComponent",selector:"cl-checklist-areas",domain:"checklist",score:4.0,complexity:"Simples"},
+  {name:"ReportReincidenciasComponent",selector:"cl-report-reincidencias",domain:"reports",score:3.9,complexity:"Simples"},
+  {name:"AiAgentDialogComponent",selector:"cl-ai-agent-dialog",domain:"apply-checklist",score:3.7,complexity:"Simples"},
+  {name:"WorkflowListComponent",selector:"cl-workflow-list",domain:"workflow",score:3.7,complexity:"Simples"},
+  {name:"ActionDialogComponent",selector:"cl-action-dialog",domain:"apply-checklist",score:3.6,complexity:"Simples"},
+  {name:"StepChecklistComponent",selector:"cl-step-checklist",domain:"checklist",score:3.6,complexity:"Simples"},
+  {name:"ChecklistAiAuditFeatureComponent",selector:"cl-checklist-ai-audit-feature",domain:"checklist",score:3.4,complexity:"Simples"},
+  {name:"RunrunTaskDialogComponent",selector:"cl-runrun-task-dialog",domain:"apply-checklist",score:3.3,complexity:"Simples"},
+  {name:"ChecklistComponent",selector:"cl-checklist",domain:"checklist",score:3.1,complexity:"Simples"},
+  {name:"StepUnitComponent",selector:"cl-step-unit",domain:"checklist",score:3.0,complexity:"Simples"},
+  {name:"FeatureUserComponent",selector:"cl-feature-user",domain:"registration",score:3.0,complexity:"Simples"},
+  {name:"ActionPlanDialogComponent",selector:"cl-action-plan-dialog",domain:"apply-checklist",score:2.9,complexity:"Simples"},
+  {name:"OnboardingComponent",selector:"cl-onboarding",domain:"checklist",score:2.9,complexity:"Simples"},
+  {name:"DialogDisputeItemComponent",selector:"cl-dialog-dispute-item",domain:"visualizar-checklist",score:2.9,complexity:"Simples"},
+  {name:"WorkflowEvaluationComponent",selector:"cl-workflow-evaluation",domain:"workflow",score:2.9,complexity:"Simples"},
+  {name:"ShellComponent",selector:"cl-shell",domain:"ai-resources",score:2.8,complexity:"Simples"},
+  {name:"HubPageComponent",selector:"cl-hub-page",domain:"ai-resources",score:2.8,complexity:"Simples"},
+  {name:"ImportToCategoryComponent",selector:"cl-import-to-category",domain:"checklist",score:2.8,complexity:"Simples"},
+  {name:"ReportsIndicatorsComponent",selector:"cl-reports-indicators",domain:"reports",score:2.8,complexity:"Simples"},
+  {name:"ActionPlanDialogComponent",selector:"cl-ui-action-plan-dialog",domain:"checklist",score:2.7,complexity:"Simples"},
+  {name:"ImportToChecklistComponent",selector:"cl-import-to-checklist",domain:"checklist",score:2.7,complexity:"Simples"},
+  {name:"FeatureCompanyComponent",selector:"cl-feature-company",domain:"registration",score:2.7,complexity:"Simples"},
+  {name:"ReportsScheduleComponent",selector:"cl-reports-schedule",domain:"reports",score:2.7,complexity:"Simples"},
+  {name:"CopyAnswerMassFormComponent",selector:"cl-copy-answer-mass-form",domain:"workflow",score:2.7,complexity:"Simples"},
+];
+
+const INVENTORY = [
+  ["AccessCheckboxComponent","🧩 ui-shared","administration",1,1,1,"Ativo"],
+  ["AccessUpdateDrilldownComponent","🪟 overlay","reports",0,0,1.1,"Ativo"],
+  ["AccessesTableComponent","📊 data-display","reports",0,2,1.8,"Ativo"],
+  ["ActionDetailsComponent","📦 other","action-kanban",0,0,3.1,"Ativo"],
+  ["ActionDialogComponent","🪟 overlay","apply-checklist",0,0,3.6,"Ativo"],
+  ["ActionFilterComponent","🔍 filters","action-kanban",0,2,1.2,"Ativo"],
+  ["ActionHistoryCardComponent","🧩 ui-shared","checklist",7,0,1,"Ativo"],
+  ["ActionHistoryDetailsDialogComponent","🧩 ui-shared","checklist",0,0,1,"Ativo"],
+  ["ActionPlanCardComponent","🧩 ui-shared","action-plans",0,0,1,"Ativo"],
+  ["ActionPlanCardLoadingComponent","🧩 ui-shared","action-plans",0,0,1,"Ativo"],
+  ["ActionPlanDetailsDialogComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["ActionPlanDialogComponent","🪟 overlay","apply-checklist",0,0,2.9,"Ativo"],
+  ["ActionPlanDialogComponent","🪟 overlay","checklist",0,0,2.7,"Ativo"],
+  ["ActionPlanDialogLoadingComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["ActionPlanFieldComponent","📝 forms","checklist",3,2,3.0,"Ativo"],
+  ["ActionPlanFieldValueComponent","📝 forms","apply-checklist",1,0,1,"Ativo"],
+  ["ActionPlanListComponent","📊 data-display","apply-checklist",6,1,1.3,"Ativo"],
+  ["ActionPlanSolutionCardComponent","🧩 ui-shared","action-plans",1,0,1,"Ativo"],
+  ["ActionPlanSolutionFormCardComponent","🧩 ui-shared","action-plans",0,1,1,"Ativo"],
+  ["ActionPlansChipListComponent","🧩 ui-shared","apply-checklist",2,2,1,"Ativo"],
+  ["ActionPlansFieldsComponent","📝 forms","checklist",1,1,1.2,"Ativo"],
+  ["ActionPriorityFieldComponent","🧩 ui-shared","shared",2,1,1,"Ativo"],
+  ["ActivitiesComponent","🧩 ui-shared","dashboards",0,1,1,"Ativo"],
+  ["AdditionalFieldComponent","📝 forms","apply-checklist",1,1,2.0,"Ativo"],
+  ["AdditionalFieldsProductComponent","📝 forms","apply-checklist",0,0,1,"Ativo"],
+  ["AddonIconsComponent","🧩 ui-shared","visualizar-checklist",1,0,1,"Ativo"],
+  ["AddonsWrapperComponent","🧩 ui-shared","apply-checklist",1,6,1.3,"Ativo"],
+  ["AdministrationIntegrationsUsersFeatureShellComponent","⚙️ feature","administration",0,0,1.8,"Ativo"],
+  ["AdministrationMfaFacialRecognitionConfigComponent","📦 other","administration",0,0,1,"Ativo"],
+  ["AdministrationMfaFeatureShellComponent","⚙️ feature","administration",0,0,1,"Ativo"],
+  ["AdministrationUserTypesFeatureConfigComponent","📦 other","administration",0,0,1.8,"Ativo"],
+  ["AdministrationUsersFeatureShellComponent","⚙️ feature","administration",0,0,1,"Ativo"],
+  ["AdvancedFiltersComponent","🔍 filters","shared",0,0,1,"Ativo"],
+  ["AdvancedSearchFiltersComponent","🔍 filters","shared",1,0,1.2,"Ativo"],
+  ["AdvancedSettingsComponent","📊 data-display","checklist",1,3,3.4,"Ativo"],
+  ["AdvancedSettingsSearchFieldComponent","📝 forms","checklist",0,1,1.2,"Ativo"],
+  ["AdvancedSettingsSurveyComponent","📊 data-display","checklist",4,2,2.3,"Ativo"],
+  ["AffectedItemsDialogComponent","🧩 ui-shared","checklist",0,0,1,"Ativo"],
+  ["AiAgentBackendErrorDialogComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiAgentButtonComponent","📊 data-display","apply-checklist",0,1,1,"Ativo"],
+  ["AiAgentCategoryCardComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiAgentConnectionErrorDialogComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiAgentDialogComponent","🪟 overlay","apply-checklist",0,0,3.7,"Ativo"],
+  ["AiAgentDrawerComponent","🧩 ui-shared","checklist",4,8,2.2,"Ativo"],
+  ["AiAgentErrorStepComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiAgentIntroStepComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiAgentItemSelectorComponent","🧩 ui-shared","checklist",2,2,1.1,"Ativo"],
+  ["AiAgentLowQualityImageDialogComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiAgentProcessingStepComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiAgentRemoveItemDialogComponent","🧩 ui-shared","checklist",0,0,1,"Ativo"],
+  ["AiAgentRestartConfirmDialogComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiAgentResultsStepComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiAgentSummaryStepComponent","🪟 overlay","apply-checklist",0,0,1.4,"Ativo"],
+  ["AiAgentUploadStepComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiAgentVoicePermissionErrorDialogComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiAgentVoiceProcessingStepComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiAgentVoiceRecordingStepComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiAgentVoiceReviewStepComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiAnswerDialogComponent","🪟 overlay","apply-checklist",0,0,2.0,"Ativo"],
+  ["AiAnswerUploadManagerComponent","🧩 ui-shared","shared",0,2,1.1,"Ativo"],
+  ["AiAuditAlertComponent","🧩 ui-shared","checklist",1,2,1,"Ativo"],
+  ["AiAuditComponent","🧩 ui-shared","apply-checklist",1,1,1,"Ativo"],
+  ["AiAuditComponent","🤖 ai","intelligence",4,1,2.6,"Ativo"],
+  ["AiAuditComponent","🧩 ui-shared","visualizar-checklist",1,0,1,"Ativo"],
+  ["AiAuditFeedbackDialogComponent","🧩 ui-shared","apply-checklist",0,0,1,"Ativo"],
+  ["AiAuditFeedbackDialogComponent","🪟 overlay","intelligence",0,0,1.1,"Ativo"],
+  ["AiAuditInfoBannerComponent","📊 data-display","checklist",2,3,1.5,"Ativo"],
+  ["AiAuditReprocessLoadingDialogComponent","🪟 overlay","intelligence",0,0,1,"Ativo"],
+  ["AiAuditReviewAllBannerComponent","🧩 ui-shared","visualizar-checklist",0,1,1,"Ativo"],
+  ["AiAuditSummaryComponent","🧩 ui-shared","visualizar-checklist",2,4,1.9,"Ativo"],
+  ["AiBannerComponent","🧩 ui-shared","shared",0,0,1,"Ativo"],
+  ["AiCreditPageComponent","🤖 ai","marketplace",0,0,2.1,"Ativo"],
+  ["AiEvidenceUploadDialogComponent","🪟 overlay","apply-checklist",0,0,1,"Ativo"],
+  ["AiFollowUpComponent","🤖 ai","integration",0,0,1,"Ativo"],
+  ["AiMultipleItemsAnswerDialogComponent","🪟 overlay","apply-checklist",0,0,1.3,"Ativo"],
+  ["AiNavMenuComponent","🗂️ layout","ai-resources",0,0,1.4,"Ativo"],
+  ["AiResourcesLayoutComponent","🗂️ layout","ai-resources",0,0,1,"Ativo"],
+  ["AiTagComponent","🧩 ui-shared","shared",0,0,1,"Ativo"],
+  ["AiTextSuggestionsDialogComponent","🪟 overlay","checklist",0,0,1,"Ativo"],
+  ["AiUsageReportComponent","📈 analytics","integration",0,0,1,"Ativo"],
+  ["AiUsageTableComponent","🧩 ui-shared","integration",2,2,2.3,"Ativo"],
+  ["AnalysisDetailsComponent","🧩 ui-shared","contestacao",3,1,1.2,"Ativo"],
+  ["AnalysisItemEditLinkComponent","📊 data-display","apply-checklist",5,0,1.6,"Ativo"],
+  ["AnalysisItemFlagComponent","📊 data-display","apply-checklist",7,0,2.2,"Ativo"],
+  ["AnswerFieldComponent","📝 forms","checklist",7,1,3.0,"Ativo"],
+  ["AnswerResultComponent","🧩 ui-shared","contestacao",3,0,1,"Ativo"],
+  ["AnswersFieldsComponent","📝 forms","checklist",2,2,2.3,"Ativo"],
+  ["AppComponent","🏠 app","app-core",0,0,1.8,"Ativo"],
+  ["ApplyNavigationComponent","📊 data-display","apply-checklist",0,0,1.1,"Ativo"],
+  ["AreaComponent","📊 data-display","visualizar-checklist",0,2,1.3,"Ativo"],
+  ["AreaHeaderComponent","🧩 ui-shared","checklist",0,8,1.3,"Ativo"],
+  ["AssistantMessageComponent","🤖 ai","ai-resources",1,0,1.3,"Ativo"],
+  ["AttachmentListComponent","🧩 ui-shared","shared",3,3,1.5,"Ativo"],
+  ["AttachmentsGalleryComponent","🧩 ui-shared","apply-checklist",3,3,2.0,"Ativo"],
+  ["AttachmentsSlideshowComponent","🧩 ui-shared","apply-checklist",4,5,3.9,"Ativo"],
+  ["AuditStatusBadgeComponent","📊 data-display","checklist",1,0,1,"Ativo"],
+  ["AuditTableComponent","📊 data-display","checklist",1,2,1.6,"Ativo"],
+  ["AuditTableRowComponent","📊 data-display","checklist",4,5,2.0,"Ativo"],
+  ["AutomatedReportsTableComponent","📊 data-display","integration",0,0,1,"Ativo"],
+  ["AvatarComponent","🧩 ui-shared","shared",0,0,1,"Ativo"],
+  ["BadgeComponent","🧩 ui-shared","shared",0,1,1,"Ativo"],
+  ["BannerUpgradePlanComponent","🧩 ui-shared","shared",3,1,1,"Ativo"],
+  ["BlocoAreasComponent","📊 data-display","visualizar-checklist",1,2,1.8,"Ativo"],
+  ["BlocoResumoComponent","📊 data-display","visualizar-checklist",1,0,2.4,"Ativo"],
+  ["BorderlessTextareaComponent","🧩 ui-shared","checklist",1,1,1,"Ativo"],
+  ["BorderlessTextfieldComponent","🧩 ui-shared","checklist",1,1,1,"Ativo"],
+  ["ButtonComponent","🧩 ui-shared","shared",2,1,1,"Ativo"],
+  ["CadastroScaleComponent","🧩 ui-shared","checklist",2,1,1.8,"Ativo"],
+  ["CalendarComponent","🧩 ui-shared","shared",3,1,1.2,"Ativo"],
+  ["CardDetailComponent","🧩 ui-shared","apply-checklist",5,4,2.2,"Ativo"],
+  ["CardModuleComponent","🧩 ui-shared","marketplace",6,1,1.8,"Ativo"],
+  ["CategoriesComponent","📊 data-display","apply-checklist",0,0,6.8,"Ativo"],
+  ["CategoryHeaderComponent","📊 data-display","apply-checklist",0,2,1.7,"Ativo"],
+  ["ChatConversationComponent","🤖 ai","ai-resources",0,0,1.9,"Ativo"],
+  ["ChatInputComponent","📝 forms","ai-resources",0,0,2.5,"Ativo"],
+  ["CheckboxComponent","🧩 ui-shared","shared",3,1,1,"Ativo"],
+  ["ChecklistAiAuditFeatureComponent","📊 data-display","checklist",0,0,3.4,"Ativo"],
+  ["ChecklistAreaItemComponent","📊 data-display","checklist",4,4,9.3,"Ativo"],
+  ["ChecklistAreaWrapperComponent","📊 data-display","checklist",4,10,8.2,"Ativo"],
+  ["ChecklistAreasComponent","📊 data-display","checklist",0,0,4.0,"Ativo"],
+  ["ChecklistComponent","📊 data-display","checklist",0,0,3.1,"Ativo"],
+  ["ChecklistFormComponent","📝 forms","checklist",0,0,5.8,"Ativo"],
+  ["ChecklistItemComponent","📊 data-display","checklist",7,5,10,"Ativo"],
+  ["ChecklistStructureListComponent","📊 data-display","checklist",3,3,4.3,"Ativo"],
+  ["ChecklistsListComponent","📊 data-display","administration",7,14,3.7,"Ativo"],
+  ["ClockpickerComponent","📝 forms","schedule",2,1,2.8,"Ativo"],
+  ["ConfigAnswerWithAiComponent","📊 data-display","checklist",2,2,6.6,"Ativo"],
+  ["ConfigConteudoEmailComponent","📊 data-display","checklist",5,2,3.1,"Ativo"],
+  ["ConditionsCreateFormComponent","📝 forms","workflow",5,2,4.5,"Ativo"],
+  ["ConditionsListComponent","📊 data-display","workflow",1,3,2.0,"Ativo"],
+  ["CopyAnswerTableComponent","📊 data-display","workflow",9,14,3.6,"Ativo"],
+  ["DependenciesFormComponent","📝 forms","checklist",3,3,4.3,"Ativo"],
+  ["DialogApproveDisapproveComponent","🪟 overlay","apply-checklist",0,2,2.9,"Ativo"],
+  ["FeatureShellComponent","📊 data-display","apply-checklist",0,0,5.1,"Ativo"],
+  ["FormCompanyIdentificationComponent","🧩 ui-shared","company",13,14,5.4,"Ativo"],
+  ["GeneralStepComponent","📦 other","workflow",6,15,6.6,"Ativo"],
+  ["HandleIntervalComponent","📊 data-display","checklist",1,0,4.0,"Ativo"],
+  ["ItemComponent","📊 data-display","apply-checklist",0,0,10,"Ativo"],
+  ["ItemComponent","📊 data-display","visualizar-checklist",2,2,3.8,"Ativo"],
+  ["ItemConfigsComponent","📊 data-display","checklist",5,8,2.4,"Ativo"],
+  ["KanbanBoardComponent","⚙️ feature","action-kanban",0,0,2.6,"Ativo"],
+  ["LoadingTableComponent","🧩 ui-shared","reports",0,0,1,"Deprecated"],
+  ["LoadingTableComponent","🧩 ui-shared","shared",0,0,1,"Ativo"],
+  ["MenuFooterComponent","🧩 ui-shared","shared",3,8,1.8,"Ativo"],
+  ["MenuListItemComponent","🧩 ui-shared","shared",10,2,1.7,"Ativo"],
+  ["MenuNavigationComponent","🧩 ui-shared","apply-checklist",7,5,1.8,"Ativo"],
+  ["ModuleDetailComponent","📦 other","marketplace",0,0,6.3,"Ativo"],
+  ["MultiselectComponent","🧩 ui-shared","shared",10,6,5.3,"Ativo"],
+  ["MultiselectInputComponent","🧩 ui-shared","shared",10,1,2.9,"Deprecated"],
+  ["MultiselectPaginatedComponent","📝 forms","shared",10,3,3.0,"Ativo"],
+  ["NotificacaoWhatsappComponent","📊 data-display","checklist",2,1,4.1,"Ativo"],
+  ["NumericRangeTableComponent","📊 data-display","checklist",5,4,2.7,"Ativo"],
+  ["NumericScaleComponent","📊 data-display","checklist",4,2,2.7,"Ativo"],
+  ["PreviewStepComponent","🧩 ui-shared","workflow",18,1,3.6,"Ativo"],
+  ["ReportReincidenciasComponent","📈 analytics","reports",0,0,3.9,"Ativo"],
+  ["ReportsRankingComponent","📈 analytics","reports",0,0,2.5,"Ativo"],
+  ["ReportsSensorsUiChartComponent","🧩 ui-shared","reports",7,1,2.9,"Ativo"],
+  ["ReportsScheduleComponent","📈 analytics","reports",0,0,2.7,"Ativo"],
+  ["ScheduleFormPeriodComponent","📝 forms","schedule",0,0,3.0,"Ativo"],
+  ["ScheduleListTableComponent","📊 data-display","schedule",0,4,2.9,"Ativo"],
+  ["SensorsBlockComponent","📦 other","integration",0,1,3.6,"Ativo"],
+  ["StartStepComponent","📦 other","workflow",7,14,4.4,"Ativo"],
+  ["TextfieldComponent","🧩 ui-shared","shared",9,3,2.4,"Ativo"],
+  ["VisualizarChecklistComponent","📊 data-display","visualizar-checklist",0,0,5.3,"Ativo"],
+  ["VoiceFillComponent","📊 data-display","apply-checklist",0,0,2.5,"Ativo"],
+  ["WorkflowCreateComponent","📦 other","workflow",0,0,6.8,"Ativo"],
+  ["WorkflowListTableComponent","📊 data-display","workflow",12,14,3.7,"Ativo"],
+  ["WorkflowReportsComponent","📈 analytics","workflow",0,0,4.3,"Ativo"],
+  ["WorkflowReportsTableComponent","📊 data-display","workflow",7,13,3.5,"Ativo"],
+  ["SelectComponent","🧩 ui-shared","shared",4,3,2.0,"Ativo"],
+  ["HeaderComponent","🧩 ui-shared","shared",6,6,2.4,"Ativo"],
+  ["FileSlideshowComponent","🧩 ui-shared","shared",2,3,2.4,"Ativo"],
+  ["FileUploadGalleryComponent","🧩 ui-shared","shared",4,2,2.7,"Ativo"],
+  ["FilterByPeriodComponent","🔍 filters","shared",4,3,2.4,"Ativo"],
+  ["FiltersComponent","🔍 filters","shared",0,2,2.0,"Ativo"],
+  ["EvaluativeComponent","🧩 ui-shared","apply-checklist",8,1,1.5,"Ativo"],
+  ["ImageMapperComponent","🧩 ui-shared","checklist",3,5,2.3,"Ativo"],
+  ["IntelligenceResponsePromptComponent","📊 data-display","checklist",0,1,3.2,"Ativo"],
+  ["ListScaleComponent","📊 data-display","checklist",1,1,2.5,"Ativo"],
+  ["MathOperationComponent","🧩 ui-shared","checklist",0,4,3.0,"Ativo"],
+  ["OnboardingComponent","📊 data-display","checklist",0,0,2.9,"Ativo"],
+  ["PromptEditorComponent","📊 data-display","checklist",1,5,2.0,"Ativo"],
+  ["PromptTestDialogComponent","🪟 overlay","checklist",0,0,2.3,"Ativo"],
+  ["ChecklistPrecisaAprovacaoComponent","📊 data-display","checklist",1,2,3.1,"Ativo"],
+  ["ChecklistStructureComponent","📊 data-display","checklist",0,0,2.3,"Ativo"],
+  ["ConfigurationsGroupsComponent","📊 data-display","checklist",0,0,2.0,"Ativo"],
+  ["RichEditorComponent","🧩 ui-shared","checklist",0,1,2.0,"Ativo"],
+  ["TableReincidenciasComponent","📊 data-display","reports",5,6,2.6,"Ativo"],
+  ["ReportsIndicatorsComponent","📈 analytics","reports",0,0,2.8,"Ativo"],
+  ["ReportsMediaComponent","📈 analytics","reports",0,0,2.2,"Ativo"],
+  ["ReportsRankingTableComponent","📊 data-display","reports",4,6,2.1,"Ativo"],
+  ["ReportsActionPlanComponent","📈 analytics","reports",0,0,2.4,"Ativo"],
+  ["ReportsSensorsFeatureFilterToolbarComponent","📈 analytics","reports",0,1,2.7,"Ativo"],
+  ["ReportsUnitAuditComponent","📈 analytics","reports",0,0,2.5,"Ativo"],
+  ["ReportsUserAuditComponent","📈 analytics","reports",0,0,2.5,"Ativo"],
+  ["CopyAnswerListComponent","📊 data-display","workflow",0,0,3.5,"Ativo"],
+  ["WorkflowEvaluationComponent","📦 other","workflow",0,0,2.9,"Ativo"],
+  ["WorkflowListComponent","📊 data-display","workflow",0,0,3.7,"Ativo"],
+  ["ScaleProductComponent","📊 data-display","apply-checklist",0,0,3.0,"Ativo"],
+  ["GeneralAttachmentsComponent","📊 data-display","apply-checklist",0,0,2.0,"Ativo"],
+  ["CardDetailComponent","🧩 ui-shared","apply-checklist",5,4,2.2,"Ativo"],
+  ["RunrunTaskDialogComponent","🪟 overlay","apply-checklist",0,0,3.3,"Ativo"],
+  ["ImportToCategoryComponent","📊 data-display","checklist",0,0,2.8,"Ativo"],
+  ["ImportToChecklistComponent","📊 data-display","checklist",0,0,2.7,"Ativo"],
+  ["KanbanColumnComponent","🧩 ui-shared","action-kanban",3,4,1.1,"Ativo"],
+  ["CommentComponent","📦 other","action-kanban",1,0,2.8,"Ativo"],
+  ["TeamMapComponent","⚙️ feature","routes",0,0,2.2,"Ativo"],
+  ["CopilotWidgetShellComponent","🤖 ai","ai-resources",0,0,2.3,"Ativo"],
+  ["HubPageComponent","🤖 ai","ai-resources",0,0,2.8,"Ativo"],
+  ["ShellComponent","🤖 ai","ai-resources",0,0,2.8,"Ativo"],
+  ["EmptyStateComponent","🤖 ai","ai-resources",0,0,1.7,"Ativo"],
+  ["MessageFormComponent","📝 forms","ai-resources",0,0,2.2,"Ativo"],
+];
+
+// ─── NAVIGATION ─────────────────────────────────────────────────────────────
+
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ─── CHANGES ────────────────────────────────────────────────────────────────
+
+function initChanges() {
+  const tbody = document.getElementById('changes-new-tbody');
+  tbody.innerHTML = CHANGES_NEW.map(([n,d,c]) =>
+    `<tr><td><strong>${n}</strong></td><td><code>${d}</code></td><td>${c}</td></tr>`
+  ).join('');
+}
+
+// ─── DUPLICATES ─────────────────────────────────────────────────────────────
+
+let dupData = [...DUPLICATES];
+
+function renderDuplicates(data) {
+  const container = document.getElementById('dup-cards');
+  const empty = document.getElementById('dup-empty');
+  document.getElementById('dup-count').textContent = `${data.length} grupos`;
+  if (!data.length) { container.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  container.innerHTML = data.map(d => `
+    <div class="card">
+      <h3>${d.group} <span class="sim-badge">${d.sim}%</span></h3>
+      <div class="sub">${d.members.length} componentes similares</div>
+      <ul>${d.members.map(m => `<li><strong>${m}</strong></li>`).join('')}</ul>
+    </div>
+  `).join('');
+}
+
+function filterDuplicates() {
+  const q = document.getElementById('dup-search').value.toLowerCase();
+  const sim = parseInt(document.getElementById('dup-sim').value) || 0;
+  const res = DUPLICATES.filter(d =>
+    (!q || d.group.toLowerCase().includes(q) || d.members.some(m => m.toLowerCase().includes(q))) &&
+    d.sim >= sim
+  );
+  renderDuplicates(res);
+}
+
+// ─── ORPHANS ────────────────────────────────────────────────────────────────
+
+let orpPage = 1, orpPerPage = 25, orpFiltered = [...ORPHANS], orpSort = {key:'score', dir:-1};
+
+function initOrphans() {
+  const domains = [...new Set(ORPHANS.map(o => o.domain))].sort();
+  const sel = document.getElementById('orp-domain');
+  domains.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; sel.appendChild(o); });
+  renderOrphans();
+}
+
+function filterOrphans() {
+  orpPage = 1;
+  const q = document.getElementById('orp-search').value.toLowerCase();
+  const domain = document.getElementById('orp-domain').value;
+  const cx = document.getElementById('orp-complexity').value;
+  orpFiltered = ORPHANS.filter(o =>
+    (!q || o.name.toLowerCase().includes(q) || o.selector.toLowerCase().includes(q)) &&
+    (!domain || o.domain === domain) &&
+    (!cx || o.complexity === cx)
+  );
+  renderOrphans();
+}
+
+function sortOrphans(key) {
+  if (orpSort.key === key) orpSort.dir *= -1; else { orpSort.key = key; orpSort.dir = 1; }
+  orpFiltered.sort((a,b) => {
+    const av = a[key], bv = b[key];
+    return typeof av === 'number' ? (av - bv) * orpSort.dir : av.localeCompare(bv) * orpSort.dir;
+  });
+  renderOrphans();
+}
+
+function resetOrphans() {
+  document.getElementById('orp-search').value = '';
+  document.getElementById('orp-domain').value = '';
+  document.getElementById('orp-complexity').value = '';
+  orpFiltered = [...ORPHANS]; orpPage = 1; renderOrphans();
+}
+
+function renderOrphans() {
+  const start = (orpPage - 1) * orpPerPage;
+  const page = orpFiltered.slice(start, start + orpPerPage);
+  document.getElementById('orp-count').textContent = `${orpFiltered.length} componentes`;
+  const tbody = document.getElementById('orp-tbody');
+  if (!orpFiltered.length) { tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhum resultado.</td></tr>`; }
+  else {
+    tbody.innerHTML = page.map(o => `
+      <tr>
+        <td><strong>${o.name}</strong></td>
+        <td><code>${o.selector}</code></td>
+        <td><span class="tag tag-gray">${o.domain}</span></td>
+        <td>${o.score}</td>
+        <td>${complexityTag(o.score)}</td>
+      </tr>
+    `).join('');
+  }
+  renderPagination('orp-pagination', orpFiltered.length, orpPerPage, orpPage, p => { orpPage = p; renderOrphans(); });
+}
+
+// ─── INVENTORY ──────────────────────────────────────────────────────────────
+
+let invPage = 1, invPerPage = 50, invFiltered = [...INVENTORY], invSort = {key:'name', dir:1};
+
+function initInventory() {
+  const cats = [...new Set(INVENTORY.map(r => r[1]))].sort();
+  const doms = [...new Set(INVENTORY.map(r => r[2]))].sort();
+  const cSel = document.getElementById('inv-category');
+  const dSel = document.getElementById('inv-domain');
+  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; cSel.appendChild(o); });
+  doms.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; dSel.appendChild(o); });
+  renderInventory();
+}
+
+function filterInventory() {
+  invPage = 1;
+  const q = document.getElementById('inv-search').value.toLowerCase();
+  const cat = document.getElementById('inv-category').value;
+  const dom = document.getElementById('inv-domain').value;
+  const status = document.getElementById('inv-status').value;
+  const cx = document.getElementById('inv-complexity').value;
+  invFiltered = INVENTORY.filter(r => {
+    const [name, category, domain, , , score, st] = r;
+    if (q && !name.toLowerCase().includes(q) && !domain.toLowerCase().includes(q)) return false;
+    if (cat && category !== cat) return false;
+    if (dom && domain !== dom) return false;
+    if (status && st !== status) return false;
+    if (cx) {
+      if (cx === 'trivial' && score > 2) return false;
+      if (cx === 'simple' && (score <= 2 || score > 4)) return false;
+      if (cx === 'moderate' && (score <= 4 || score > 6)) return false;
+      if (cx === 'complex' && (score <= 6 || score > 8)) return false;
+      if (cx === 'very' && score <= 8) return false;
+    }
+    return true;
+  });
+  renderInventory();
+}
+
+function sortInventory(key) {
+  const keys = {name:0, category:1, domain:2, inputs:3, outputs:4, score:5, status:6};
+  const idx = keys[key];
+  if (invSort.key === key) invSort.dir *= -1; else { invSort.key = key; invSort.dir = 1; }
+  invFiltered.sort((a,b) => {
+    const av = a[idx], bv = b[idx];
+    return typeof av === 'number' ? (av - bv) * invSort.dir : String(av).localeCompare(String(bv)) * invSort.dir;
+  });
+  renderInventory();
+}
+
+function resetInventory() {
+  document.getElementById('inv-search').value = '';
+  document.getElementById('inv-category').value = '';
+  document.getElementById('inv-domain').value = '';
+  document.getElementById('inv-status').value = '';
+  document.getElementById('inv-complexity').value = '';
+  invFiltered = [...INVENTORY]; invPage = 1; renderInventory();
+}
+
+function invPerPageChange() {
+  invPerPage = parseInt(document.getElementById('inv-per-page').value);
+  invPage = 1; renderInventory();
+}
+
+function renderInventory() {
+  const start = (invPage - 1) * invPerPage;
+  const page = invFiltered.slice(start, start + invPerPage);
+  document.getElementById('inv-count').textContent = `${invFiltered.length} componentes`;
+  const tbody = document.getElementById('inv-tbody');
+  const empty = document.getElementById('inv-empty');
+  if (!invFiltered.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = page.map(([name, cat, dom, inp, out, score, status]) => `
+    <tr>
+      <td><strong>${name}</strong></td>
+      <td><span style="font-size:12px">${cat}</span></td>
+      <td><code>${dom}</code></td>
+      <td style="text-align:center">${inp}</td>
+      <td style="text-align:center">${out}</td>
+      <td><div class="complexity-bar"><div class="bar"><div class="bar-fill ${complexityClass(score)}" style="width:${Math.min(score/10,1)*100}%"></div></div><span style="font-size:12px">${score}</span></div></td>
+      <td>${status === 'Deprecated' ? '<span class="tag tag-red">🔴 Deprecated</span>' : '<span class="tag tag-green">🟢 Ativo</span>'}</td>
+    </tr>
+  `).join('');
+  renderPagination('inv-pagination', invFiltered.length, invPerPage, invPage, p => { invPage = p; renderInventory(); });
+}
+
+// ─── HELPERS ────────────────────────────────────────────────────────────────
+
+function complexityClass(score) {
+  if (score >= 8) return 'bar-very-complex';
+  if (score >= 6) return 'bar-complex';
+  if (score >= 4) return 'bar-moderate';
+  if (score >= 2) return 'bar-simple';
+  return 'bar-trivial';
+}
+
+function complexityTag(score) {
+  if (score >= 8) return '<span class="tag tag-red">Muito Complexo</span>';
+  if (score >= 6) return '<span class="tag tag-yellow">Complexo</span>';
+  if (score >= 4) return '<span class="tag tag-blue">Moderado</span>';
+  if (score >= 2) return '<span class="tag tag-teal">Simples</span>';
+  return '<span class="tag tag-gray">Trivial</span>';
+}
+
+function renderPagination(id, total, perPage, current, onClick) {
+  const pages = Math.ceil(total / perPage);
+  const el = document.getElementById(id);
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  let html = `<span style="font-size:12px;color:var(--muted)">${(current-1)*perPage+1}–${Math.min(current*perPage,total)} de ${total}</span>`;
+  html += `<button class="page-btn" onclick="(${onClick.toString()})(${current-1})" ${current===1?'disabled':''}>‹</button>`;
+  const range = paginate(current, pages);
+  range.forEach(p => {
+    if (p === '…') html += `<span style="color:var(--muted);padding:5px 4px">…</span>`;
+    else html += `<button class="page-btn ${p===current?'active':''}" onclick="(${onClick.toString()})(${p})">${p}</button>`;
+  });
+  html += `<button class="page-btn" onclick="(${onClick.toString()})(${current+1})" ${current===pages?'disabled':''}>›</button>`;
+  el.innerHTML = html;
+}
+
+function paginate(cur, total) {
+  if (total <= 7) return Array.from({length:total},(_,i)=>i+1);
+  const r = [1];
+  if (cur > 3) r.push('…');
+  for (let i = Math.max(2,cur-1); i <= Math.min(total-1,cur+1); i++) r.push(i);
+  if (cur < total-2) r.push('…');
+  r.push(total);
+  return r;
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+
+initChanges();
+renderDuplicates(DUPLICATES);
+initOrphans();
+initInventory();
+</script>
+</body>
+</html>
